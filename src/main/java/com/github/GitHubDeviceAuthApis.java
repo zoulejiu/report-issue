@@ -10,7 +10,7 @@ import java.util.Map;
 public class GitHubDeviceAuthApis {
     private final String DEVICE_CODE_URL = "https://github.com/login/device/code";
     private final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code";
-    public static String token = "11AHTYGQY0LRvVWWRyfsR0_emdEdrpcfVTEfXqpVYD3d4BLEP6Ra98W1VjLaFFIbvZR5ZIASMTEDZTu3FV";
+    public static String token = "11AHTYGQY0yFXr0na3mKau_eTjuTwt2PoWWlOqYNel50wdwnrb8aUFrojFceRt3ewDIGJC6AWCbIx3LvDF";
 
     Map<String, String> heads = new HashMap<>();
 
