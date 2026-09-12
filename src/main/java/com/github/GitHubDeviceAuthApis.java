@@ -10,14 +10,14 @@ import java.util.Map;
 public class GitHubDeviceAuthApis {
     private final String DEVICE_CODE_URL = "https://github.com/login/device/code";
     private final String GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code";
-    public static String token = "11AHTYGQY0yFXr0na3mKau_eTjuTwt2PoWWlOqYNel50wdwnrb8aUFrojFceRt3ewDIGJC6AWCbIx3LvDF";
+    private final GitHubTokenProvider tokenProvider;
 
-    Map<String, String> heads = new HashMap<>();
+    public GitHubDeviceAuthApis() {
+        this(new GitHubTokenProvider());
+    }
 
-    {
-        heads.put("User-Agent", "issueAppRoot");
-        heads.put("X-GitHub-Api-Version", "2022-11-28");
-        heads.put("Authorization", String.format("Bearer github_pat_%s", token));
+    public GitHubDeviceAuthApis(GitHubTokenProvider tokenProvider) {
+        this.tokenProvider = tokenProvider;
     }
 
     GitHubDeviceCode getDeviceCode(String clientId) throws Exception {
@@ -31,13 +31,13 @@ public class GitHubDeviceAuthApis {
         return null;
     }
 
-    public IssueInfo.ItemsDTO findIssue(String repo,String id) throws Exception {
+    public IssueInfo.ItemsDTO findIssue(String repo, String id) throws Exception {
         String url = "https://api.github.com/search/issues";
         Map<String, String> params = new HashMap<>();
-        params.put("q", "repo:"+repo+" is:issue in:body " + id);
+        params.put("q", "repo:" + repo + " is:issue in:body " + id);
         params.put("page", "1");
         params.put("per_page", "per_page");
-        HttpClient httpClient = new HttpClient(heads);
+        HttpClient httpClient = new HttpClient(githubHeaders());
         HttpClientResponse<IssueInfo> httpClientResponse = httpClient.get(url, params, IssueInfo.class);
         if (httpClientResponse.isStatus()) {
             IssueInfo issueInfo = httpClientResponse.getBody();
@@ -52,8 +52,8 @@ public class GitHubDeviceAuthApis {
 
     }
 
-    public Issue issue(String url,String title, String body) throws Exception {
-        HttpClient httpClient = new HttpClient(heads);
+    public Issue issue(String url, String title, String body) throws Exception {
+        HttpClient httpClient = new HttpClient(githubHeaders());
         Map<String, Object> map = new HashMap<>();
         map.put("title", title);
         map.put("body", body);
@@ -68,5 +68,11 @@ public class GitHubDeviceAuthApis {
 
     }
 
-
+    private Map<String, String> githubHeaders() throws Exception {
+        Map<String, String> heads = new HashMap<>();
+        heads.put("User-Agent", "issueAppRoot");
+        heads.put("X-GitHub-Api-Version", "2022-11-28");
+        heads.put("Authorization", "Bearer " + tokenProvider.getToken());
+        return heads;
+    }
 }

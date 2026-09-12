@@ -43,14 +43,20 @@ public class HttpClient {
     private CloseableHttpClient httpClient;
     private final Gson gson;
     private final Map<String, String> heads;
+    private final int timeoutMs;
 
     public HttpClient() throws Exception {
         this(null);
     }
 
     public HttpClient(Map<String, String> heads) throws Exception {
+        this(heads, 3000);
+    }
+
+    public HttpClient(Map<String, String> heads, int timeoutMs) throws Exception {
         this.gson = new GsonBuilder().setDateFormat("yyyy-MM-dd HH:mm:ss").create();
         this.heads = heads;
+        this.timeoutMs = timeoutMs > 0 ? timeoutMs : 3000;
         getClient();
     }
 
@@ -74,8 +80,8 @@ public class HttpClient {
                 new DefaultClientTlsStrategy(sslContext.build(),
                         NoopHostnameVerifier.INSTANCE);
         ConnectionConfig connectionConfig = ConnectionConfig.custom()
-                .setSocketTimeout(Timeout.ofMilliseconds(3000))  // Socket Timeout
-                .setConnectTimeout(Timeout.ofMilliseconds(3000)) // Connect Timeout
+                .setSocketTimeout(Timeout.ofMilliseconds(timeoutMs))  // Socket Timeout
+                .setConnectTimeout(Timeout.ofMilliseconds(timeoutMs)) // Connect Timeout
                 .build();
         PoolingHttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
                 .setDefaultConnectionConfig(connectionConfig)
