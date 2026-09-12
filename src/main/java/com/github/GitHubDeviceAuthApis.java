@@ -36,7 +36,7 @@ public class GitHubDeviceAuthApis {
         Map<String, String> params = new HashMap<>();
         params.put("q", "repo:" + repo + " is:issue in:body " + id);
         params.put("page", "1");
-        params.put("per_page", "per_page");
+        params.put("per_page", "1");
         HttpClient httpClient = new HttpClient(githubHeaders());
         HttpClientResponse<IssueInfo> httpClientResponse = httpClient.get(url, params, IssueInfo.class);
         if (httpClientResponse.isStatus()) {
