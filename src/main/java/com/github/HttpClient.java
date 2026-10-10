@@ -260,16 +260,16 @@ public class HttpClient {
 
     private void checkParams(String url) throws Exception {
         if (StringUtils.isBlank(url)) {
-            throw new Exception("請求URL 不能為空");
+            throw new Exception("Request URL must not be empty");
         }
     }
 
     private void error(HttpResponse response) throws Exception {
         if (response == null) {
-            throw new Exception("服務返 回失敗");
+            throw new Exception("No response from server");
         }
         if (response.getCode() == HttpStatus.SC_BAD_GATEWAY) {
-            throw new Exception("服務502,無法連接.");
+            throw new Exception("Server returned 502, unable to connect");
         }
     }
 }
