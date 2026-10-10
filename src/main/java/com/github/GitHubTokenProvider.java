@@ -12,6 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * 每次上报都会 new 一个 provider，所以短票按 tokenUrl 在进程内共享，并且取票串行：
  * 同时提交多份报告时只请求一次 token 服务，其余直接复用。
+ * 取票失败后 30 秒内不再请求 token 服务，排队的报告直接用本地缓存或失败，
+ * 避免服务无响应时每份报告都等满超时。
  */
 public class GitHubTokenProvider {
 
@@ -21,9 +23,11 @@ public class GitHubTokenProvider {
     private static final long REFRESH_AHEAD_SECONDS = 120L;
     private static final int REMOTE_ATTEMPTS = 2;
     private static final long RETRY_DELAY_MILLIS = 1000L;
+    private static final long FAILURE_MEMORY_MILLIS = 30_000L;
 
     private static final Map<String, Object> LOCKS = new ConcurrentHashMap<>();
     private static final Map<String, GitHubInstallationToken> CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, RecentFailure> FAILURES = new ConcurrentHashMap<>();
 
     private final String tokenUrl;
     private final String accessKey;
@@ -51,18 +55,26 @@ public class GitHubTokenProvider {
             if (isUsable(cached)) {
                 return cached.getToken();
             }
-            String failure = null;
-            for (int attempt = 1; attempt <= REMOTE_ATTEMPTS; attempt++) {
-                RemoteResult remote = fetchRemote();
-                if (isUsable(remote.token)) {
-                    CACHE.put(tokenUrl, remote.token);
-                    store.save(remote.token);
-                    return remote.token.getToken();
+            RecentFailure recent = FAILURES.get(tokenUrl);
+            String failure;
+            if (recent != null && System.currentTimeMillis() - recent.atMillis < FAILURE_MEMORY_MILLIS) {
+                failure = recent.reason;
+            } else {
+                failure = null;
+                for (int attempt = 1; attempt <= REMOTE_ATTEMPTS; attempt++) {
+                    RemoteResult remote = fetchRemote();
+                    if (isUsable(remote.token)) {
+                        FAILURES.remove(tokenUrl);
+                        CACHE.put(tokenUrl, remote.token);
+                        store.save(remote.token);
+                        return remote.token.getToken();
+                    }
+                    failure = remote.failure;
+                    if (attempt < REMOTE_ATTEMPTS) {
+                        Thread.sleep(RETRY_DELAY_MILLIS);
+                    }
                 }
-                failure = remote.failure;
-                if (attempt < REMOTE_ATTEMPTS) {
-                    Thread.sleep(RETRY_DELAY_MILLIS);
-                }
+                FAILURES.put(tokenUrl, new RecentFailure(failure, System.currentTimeMillis()));
             }
             GitHubInstallationToken local = store.load();
             if (isUsable(local)) {
@@ -70,6 +82,16 @@ public class GitHubTokenProvider {
                 return local.getToken();
             }
             throw new Exception("Could not get a GitHub access token (" + failure + ") and no valid cached token is available");
+        }
+    }
+
+    private static final class RecentFailure {
+        final String reason;
+        final long atMillis;
+
+        RecentFailure(String reason, long atMillis) {
+            this.reason = reason;
+            this.atMillis = atMillis;
         }
     }
 
